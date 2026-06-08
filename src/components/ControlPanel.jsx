@@ -4,6 +4,7 @@ import {
   CircleDot,
   Gauge,
   GitCompareArrows,
+  ImageUp,
   MousePointer2,
   Palette,
   RefreshCcw,
@@ -62,9 +63,24 @@ export default function ControlPanel({
     x0: 8, y0: 9, x1: 72, y1: 43, cx: 45, cy: 31, radius: 20, rx: 31, ry: 18,
     color: '#5eead4', dx: 90, dy: 40, sx: 1.35, sy: 1.2, angle: 34,
     lineWidth: 1, lineStyle: 'solid', pixelZoom: 1,
+    imageSource: null, imageName: '', imageResolution: 48, imageMode: 'color',
     construction: true, bezierPoints: BEZIER_POINTS, clipLine: CLIP_LINE,
   })
   const matrix = transformMatrix(algorithm, settings)
+  const onImageUpload = (event) => {
+    const file = event.target.files?.[0]
+    if (!file || !file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      setSettings((current) => ({
+        ...current,
+        imageSource: reader.result,
+        imageName: file.name,
+      }))
+    }, { once: true })
+    reader.readAsDataURL(file)
+    event.target.value = ''
+  }
 
   return (
     <aside className="control-panel">
@@ -95,41 +111,66 @@ export default function ControlPanel({
 
         {experiment.id === 'primitives' && (
           <div className="control-group">
-            {algorithm.includes('直线') && (
-              <div className="feature-note">
-                <MousePointer2 size={17} />
-                <div><strong>直接在画布点击作图</strong><p>第一次点击确定起点，移动鼠标预览，第二次点击确定终点。</p></div>
-              </div>
-            )}
-            {algorithm.includes('直线') ? (
+            {algorithm === '图像光栅化' ? (
               <>
-                <Slider label="起点 X" value={settings.x0} min={0} max={90} onChange={set(setSettings, 'x0')} />
-                <Slider label="起点 Y" value={settings.y0} min={0} max={63} onChange={set(setSettings, 'y0')} />
-                <Slider label="终点 X" value={settings.x1} min={0} max={90} onChange={set(setSettings, 'x1')} />
-                <Slider label="终点 Y" value={settings.y1} min={0} max={63} onChange={set(setSettings, 'y1')} />
+                <label className="image-upload-control">
+                  <input type="file" accept="image/*" onChange={onImageUpload} />
+                  <ImageUp size={18} />
+                  <span><strong>{settings.imageName || '上传真实图片'}</strong><small>JPG、PNG、WebP 等本地图片</small></span>
+                </label>
+                <Slider label="采样列数" value={settings.imageResolution} min={16} max={96} step={4} onChange={set(setSettings, 'imageResolution')} />
+                <label className="compact-select-control">
+                  <span>颜色模式</span>
+                  <select value={settings.imageMode} onChange={(event) => set(setSettings, 'imageMode')(event.target.value)}>
+                    <option value="color">原始 RGB</option>
+                    <option value="grayscale">灰度亮度</option>
+                    <option value="quantized">限色量化</option>
+                  </select>
+                </label>
+                <div className="feature-note">
+                  <ImageUp size={17} />
+                  <div><strong>图片仅在本机浏览器处理</strong><p>先缩小采样，再按从左到右、从上到下的顺序写入像素框。</p></div>
+                </div>
               </>
             ) : (
               <>
-                <Slider label="中心 X" value={settings.cx} min={0} max={90} onChange={set(setSettings, 'cx')} />
-                <Slider label="中心 Y" value={settings.cy} min={0} max={63} onChange={set(setSettings, 'cy')} />
-                {algorithm.includes('椭圆') ? (
+                {algorithm.includes('直线') && (
+                  <div className="feature-note">
+                    <MousePointer2 size={17} />
+                    <div><strong>直接在画布点击作图</strong><p>第一次点击确定起点，移动鼠标预览，第二次点击确定终点。</p></div>
+                  </div>
+                )}
+                {algorithm.includes('直线') ? (
                   <>
-                    <Slider label="长半轴" value={settings.rx} min={4} max={42} onChange={set(setSettings, 'rx')} />
-                    <Slider label="短半轴" value={settings.ry} min={4} max={28} onChange={set(setSettings, 'ry')} />
+                    <Slider label="起点 X" value={settings.x0} min={0} max={90} onChange={set(setSettings, 'x0')} />
+                    <Slider label="起点 Y" value={settings.y0} min={0} max={63} onChange={set(setSettings, 'y0')} />
+                    <Slider label="终点 X" value={settings.x1} min={0} max={90} onChange={set(setSettings, 'x1')} />
+                    <Slider label="终点 Y" value={settings.y1} min={0} max={63} onChange={set(setSettings, 'y1')} />
                   </>
-                ) : <Slider label="半径" value={settings.radius} min={3} max={28} onChange={set(setSettings, 'radius')} />}
+                ) : (
+                  <>
+                    <Slider label="中心 X" value={settings.cx} min={0} max={90} onChange={set(setSettings, 'cx')} />
+                    <Slider label="中心 Y" value={settings.cy} min={0} max={63} onChange={set(setSettings, 'cy')} />
+                    {algorithm.includes('椭圆') ? (
+                      <>
+                        <Slider label="长半轴" value={settings.rx} min={4} max={42} onChange={set(setSettings, 'rx')} />
+                        <Slider label="短半轴" value={settings.ry} min={4} max={28} onChange={set(setSettings, 'ry')} />
+                      </>
+                    ) : <Slider label="半径" value={settings.radius} min={3} max={28} onChange={set(setSettings, 'radius')} />}
+                  </>
+                )}
+                <Slider label="线宽" value={settings.lineWidth} min={1} max={4} onChange={set(setSettings, 'lineWidth')} unit=" px" />
+                <Slider label="像素倍率" value={settings.pixelZoom} min={0.8} max={1.6} step={0.1} onChange={set(setSettings, 'pixelZoom')} unit="×" />
+                <label className="compact-select-control">
+                  <span>线型</span>
+                  <select value={settings.lineStyle} onChange={(event) => set(setSettings, 'lineStyle')(event.target.value)}>
+                    <option value="solid">实线</option>
+                    <option value="dashed">虚线</option>
+                    <option value="dotted">点线</option>
+                  </select>
+                </label>
               </>
             )}
-            <Slider label="线宽" value={settings.lineWidth} min={1} max={4} onChange={set(setSettings, 'lineWidth')} unit=" px" />
-            <Slider label="像素倍率" value={settings.pixelZoom} min={0.8} max={1.6} step={0.1} onChange={set(setSettings, 'pixelZoom')} unit="×" />
-            <label className="compact-select-control">
-              <span>线型</span>
-              <select value={settings.lineStyle} onChange={(event) => set(setSettings, 'lineStyle')(event.target.value)}>
-                <option value="solid">实线</option>
-                <option value="dashed">虚线</option>
-                <option value="dotted">点线</option>
-              </select>
-            </label>
           </div>
         )}
 
@@ -195,14 +236,14 @@ export default function ControlPanel({
         )}
 
         <div className="control-group">
-          {(experiment.id === 'primitives' || experiment.id === 'fill') && (
+          {((experiment.id === 'primitives' && algorithm !== '图像光栅化') || experiment.id === 'fill') && (
             <label className="color-control">
               <Palette size={15} />
               <span>绘制颜色</span>
               <input type="color" value={settings.color} onChange={(event) => setSettings((current) => ({ ...current, color: event.target.value }))} />
             </label>
           )}
-          <Toggle checked={compare} onChange={setCompare} label="参考结果叠加" icon={GitCompareArrows} />
+          {algorithm !== '图像光栅化' && <Toggle checked={compare} onChange={setCompare} label="参考结果叠加" icon={GitCompareArrows} />}
           <Slider label="演示速度" value={speed} min={0.35} max={2.5} step={0.05} onChange={setSpeed} unit="×" />
         </div>
       </div>

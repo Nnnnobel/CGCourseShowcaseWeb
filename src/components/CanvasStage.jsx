@@ -22,6 +22,7 @@ import {
   sutherlandHodgmanStages,
   transformPoints,
 } from '../lib/algorithms'
+import { applyImageMode } from '../lib/imageRaster'
 
 const COLORS = {
   ink: '#e8f0f2',
@@ -144,6 +145,84 @@ function drawPrimitive(ctx, width, height, algorithm, settings, progress, compar
   return { count: points.length, label: `${visible} / ${points.length} 像素`, complexity: 'O(n)' }
 }
 
+function drawImageRaster(ctx, width, height, image, settings, progress) {
+  if (!image) {
+    ctx.fillStyle = 'rgba(94, 234, 212, .09)'
+    ctx.strokeStyle = 'rgba(94, 234, 212, .4)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([8, 8])
+    ctx.strokeRect(width * 0.22, height * 0.25, width * 0.56, height * 0.5)
+    ctx.setLineDash([])
+    ctx.fillStyle = COLORS.ink
+    ctx.textAlign = 'center'
+    ctx.font = '600 16px Inter, system-ui'
+    ctx.fillText('上传一张真实图片，观察它如何变成像素', width / 2, height / 2 - 8)
+    ctx.fillStyle = COLORS.muted
+    ctx.font = '12px Inter, system-ui'
+    ctx.fillText('图片只在本地读取，不会上传到服务器', width / 2, height / 2 + 18)
+    ctx.textAlign = 'start'
+    return { count: 0, label: '等待上传图片', complexity: 'O(W×H)' }
+  }
+
+  let columns = Math.max(16, Math.min(96, settings.imageResolution || 48))
+  let rows = Math.max(1, Math.round(columns * image.naturalHeight / image.naturalWidth))
+  if (rows > 72) {
+    columns = Math.max(12, Math.round(columns * 72 / rows))
+    rows = 72
+  }
+
+  const sampler = document.createElement('canvas')
+  sampler.width = columns
+  sampler.height = rows
+  const sampleContext = sampler.getContext('2d', { willReadFrequently: true })
+  sampleContext.imageSmoothingEnabled = true
+  sampleContext.drawImage(image, 0, 0, columns, rows)
+  const pixels = sampleContext.getImageData(0, 0, columns, rows).data
+
+  const cell = Math.max(2, Math.min((width - 82) / columns, (height - 82) / rows))
+  const gridWidth = columns * cell
+  const gridHeight = rows * cell
+  const offsetX = (width - gridWidth) / 2
+  const offsetY = (height - gridHeight) / 2
+  const total = columns * rows
+  const visible = Math.min(total, Math.ceil(total * progress))
+
+  ctx.strokeStyle = 'rgba(151, 181, 185, .13)'
+  ctx.lineWidth = 0.65
+  for (let x = 0; x <= columns; x += 1) {
+    ctx.beginPath()
+    ctx.moveTo(offsetX + x * cell, offsetY)
+    ctx.lineTo(offsetX + x * cell, offsetY + gridHeight)
+    ctx.stroke()
+  }
+  for (let y = 0; y <= rows; y += 1) {
+    ctx.beginPath()
+    ctx.moveTo(offsetX, offsetY + y * cell)
+    ctx.lineTo(offsetX + gridWidth, offsetY + y * cell)
+    ctx.stroke()
+  }
+
+  for (let index = 0; index < visible; index += 1) {
+    const source = index * 4
+    const [red, green, blue] = applyImageMode(pixels[source], pixels[source + 1], pixels[source + 2], settings.imageMode)
+    const x = index % columns
+    const y = Math.floor(index / columns)
+    ctx.fillStyle = `rgb(${red} ${green} ${blue})`
+    ctx.fillRect(offsetX + x * cell + 0.45, offsetY + y * cell + 0.45, Math.max(1, cell - 0.9), Math.max(1, cell - 0.9))
+  }
+
+  if (visible > 0 && visible < total) {
+    const current = visible - 1
+    const x = current % columns
+    const y = Math.floor(current / columns)
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(offsetX + x * cell, offsetY + y * cell, cell, cell)
+  }
+
+  return { count: total, label: `${visible} / ${total} RGB 像素`, complexity: `O(${columns}×${rows})` }
+}
+
 function drawFill(ctx, width, height, algorithm, settings, progress, compare) {
   const points = fillPoints(algorithm)
   const visible = Math.max(1, Math.ceil(points.length * progress))
@@ -264,9 +343,24 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
   const [dragTarget, setDragTarget] = useState(null)
   const [selectedClipPoint, setSelectedClipPoint] = useState(0)
   const [linePointStage, setLinePointStage] = useState(0)
+  const [uploadedImage, setUploadedImage] = useState(null)
 
   const accent = experiment.accent
   const stats = useMemo(() => ({ count: 0, label: '准备就绪', complexity: '—' }), [])
+
+  useEffect(() => {
+    if (!settings.imageSource) {
+      setUploadedImage(null)
+      return undefined
+    }
+    let cancelled = false
+    const image = new Image()
+    image.addEventListener('load', () => {
+      if (!cancelled) setUploadedImage(image)
+    }, { once: true })
+    image.src = settings.imageSource
+    return () => { cancelled = true }
+  }, [settings.imageSource])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -275,7 +369,11 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
       const { ctx, width, height } = resizeCanvas(canvas)
       drawBackdrop(ctx, width, height, accent)
       let next
-      if (experiment.id === 'primitives') next = drawPrimitive(ctx, width, height, algorithm, settings, progress, compare)
+      if (experiment.id === 'primitives') {
+        next = algorithm === '图像光栅化'
+          ? drawImageRaster(ctx, width, height, uploadedImage, settings, progress)
+          : drawPrimitive(ctx, width, height, algorithm, settings, progress, compare)
+      }
       if (experiment.id === 'fill') next = drawFill(ctx, width, height, algorithm, settings, progress, compare)
       if (experiment.id === 'clipping') next = drawClipping(ctx, width, height, algorithm, settings, progress, selectedClipPoint)
       if (experiment.id === 'transform') next = drawTransform(ctx, width, height, algorithm, settings, progress)
@@ -287,7 +385,7 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
     const observer = new ResizeObserver(draw)
     observer.observe(canvas)
     return () => observer.disconnect()
-  }, [accent, algorithm, compare, experiment.id, onStats, progress, selectedClipPoint, settings, stats])
+  }, [accent, algorithm, compare, experiment.id, onStats, progress, selectedClipPoint, settings, stats, uploadedImage])
 
   const pointerToBezier = (event) => {
     const canvas = canvasRef.current

@@ -19,6 +19,7 @@ import {
   transformPoints,
 } from '../src/lib/algorithms.js'
 import { algorithmCode } from '../src/data/algorithmCode.js'
+import { applyImageMode } from '../src/lib/imageRaster.js'
 
 const key = (point) => `${point.x},${point.y}`
 
@@ -81,11 +82,17 @@ test('transform and Bezier endpoints remain mathematically correct', () => {
 })
 
 test('every selectable algorithm has a C++ execution trace', () => {
-  const expectedCounts = { primitives: 6, fill: 4, clipping: 3, transform: 4, bezier: 3 }
+  const expectedCounts = { primitives: 7, fill: 4, clipping: 3, transform: 4, bezier: 3 }
   for (const [experiment, count] of Object.entries(expectedCounts)) {
     const snippets = Object.values(algorithmCode[experiment])
     assert.equal(snippets.length, count)
     assert.ok(snippets.every((snippet) => snippet.lines.length > 3 && snippet.trace.length > 3))
     assert.ok(snippets.every((snippet) => snippet.trace.every((line) => line >= 0 && line < snippet.lines.length)))
   }
+})
+
+test('image rasterization preserves, grayscales, and quantizes sampled colors', () => {
+  assert.deepEqual(applyImageMode(18, 140, 233, 'color'), [18, 140, 233])
+  assert.deepEqual(applyImageMode(100, 150, 200, 'grayscale'), [141, 141, 141])
+  assert.deepEqual(applyImageMode(18, 140, 233, 'quantized'), [0, 128, 255])
 })

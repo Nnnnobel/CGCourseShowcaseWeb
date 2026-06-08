@@ -76,6 +76,20 @@ export const algorithmCode = {
       '  return pixels;',
       '}',
     ], [0, 1, 2, 3, 4, 5, 2, 3, 5, 6, 7, 7, 8, 9]),
+    图像光栅化: code([
+      'void rasterizeImage(const Image& source, int columns) {',
+      '  float scale = columns / float(source.width);',
+      '  int rows = round(source.height * scale);',
+      '  Image sampled = resize(source, columns, rows);',
+      '  for (int y=0; y<rows; ++y) {',
+      '    for (int x=0; x<columns; ++x) {',
+      '      Color rgb = sampled.getPixel(x,y);',
+      '      rgb = applyColorMode(rgb);',
+      '      frameBuffer[y][x] = rgb;',
+      '    }',
+      '  }',
+      '}',
+    ], [0, 1, 2, 3, 4, 5, 6, 7, 8, 5, 6, 7, 8, 9, 10, 11]),
   },
   fill: {
     '扫描线填充': code([

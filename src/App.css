@@ -162,6 +162,16 @@ button { border: 0; cursor: pointer; }
 .feature-note { grid-template-columns: 20px 1fr; align-items: start; color: var(--accent); }
 .feature-note strong { display: block; color: #cdd8da; font-size: 11px; }
 .feature-note p { margin: 3px 0 0; color: #708086; font-size: 10px; line-height: 1.5; }
+.image-upload-control {
+  min-width: 0; min-height: 58px; display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 9px;
+  padding: 10px; color: var(--accent); border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--line));
+  background: color-mix(in srgb, var(--accent) 6%, transparent); cursor: pointer;
+}
+.image-upload-control:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.image-upload-control input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.image-upload-control span { min-width: 0; display: grid; gap: 3px; }
+.image-upload-control strong { overflow: hidden; color: #dbe7e9; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.image-upload-control small { color: #718187; font-size: 9px; }
 .clip-coordinates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .clip-coordinates div { display: grid; grid-template-columns: 24px 1fr 1fr; gap: 5px; padding: 8px; border: 1px solid var(--line); }
 .clip-coordinates b { color: var(--accent); font: 10px ui-monospace, monospace; }
