@@ -18,6 +18,7 @@ import {
   sutherlandHodgmanStages,
   transformPoints,
 } from '../src/lib/algorithms.js'
+import { algorithmCode } from '../src/data/algorithmCode.js'
 
 const key = (point) => `${point.x},${point.y}`
 
@@ -77,4 +78,14 @@ test('transform and Bezier endpoints remain mathematically correct', () => {
   const curve = bezierCurve(BEZIER_POINTS.slice(0, 4), 100)
   assert.deepEqual(curve[0], BEZIER_POINTS[0])
   assert.deepEqual(curve.at(-1), BEZIER_POINTS[3])
+})
+
+test('every selectable algorithm has a C++ execution trace', () => {
+  const expectedCounts = { primitives: 6, fill: 4, clipping: 3, transform: 4, bezier: 3 }
+  for (const [experiment, count] of Object.entries(expectedCounts)) {
+    const snippets = Object.values(algorithmCode[experiment])
+    assert.equal(snippets.length, count)
+    assert.ok(snippets.every((snippet) => snippet.lines.length > 3 && snippet.trace.length > 3))
+    assert.ok(snippets.every((snippet) => snippet.trace.every((line) => line >= 0 && line < snippet.lines.length)))
+  }
 })

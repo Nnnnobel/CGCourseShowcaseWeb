@@ -91,10 +91,17 @@ function path(ctx, points, transform, close = false) {
   if (close) ctx.closePath()
 }
 
-function drawRaster(ctx, width, height, points, visibleCount, color, boundary = [], lineStyle = 'solid', lineWidth = 1, pixelZoom = 1) {
+function rasterMetrics(width, height, pixelZoom = 1) {
   const cell = Math.min((width - 76) / GRID.width, (height - 76) / GRID.height) * pixelZoom
-  const ox = (width - GRID.width * cell) / 2
-  const oy = (height - GRID.height * cell) / 2
+  return {
+    cell,
+    ox: (width - GRID.width * cell) / 2,
+    oy: (height - GRID.height * cell) / 2,
+  }
+}
+
+function drawRaster(ctx, width, height, points, visibleCount, color, boundary = [], lineStyle = 'solid', lineWidth = 1, pixelZoom = 1) {
+  const { cell, ox, oy } = rasterMetrics(width, height, pixelZoom)
   ctx.strokeStyle = 'rgba(151, 181, 185, .12)'
   ctx.lineWidth = 0.7
   for (let x = 0; x <= GRID.width; x += 1) {
@@ -113,6 +120,7 @@ function drawRaster(ctx, width, height, points, visibleCount, color, boundary = 
   })
   ctx.fillStyle = COLORS.pink
   boundary.forEach((p) => ctx.fillRect(ox + p.x * cell + 0.5, oy + p.y * cell + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1)))
+  return { cell, ox, oy }
 }
 
 function drawPrimitive(ctx, width, height, algorithm, settings, progress, compare) {
@@ -122,7 +130,17 @@ function drawPrimitive(ctx, width, height, algorithm, settings, progress, compar
     const reference = ddaLine(settings.x0, settings.y0, settings.x1, settings.y1)
     drawRaster(ctx, width, height, reference, reference.length, 'rgba(251, 191, 36, .28)')
   }
-  drawRaster(ctx, width, height, points, visible, settings.color, [], settings.lineStyle, settings.lineWidth, settings.pixelZoom)
+  const grid = drawRaster(ctx, width, height, points, visible, settings.color, [], settings.lineStyle, settings.lineWidth, settings.pixelZoom)
+  if (algorithm.includes('直线')) {
+    const endpoints = [{ x: settings.x0, y: settings.y0 }, { x: settings.x1, y: settings.y1 }]
+    endpoints.forEach((point, index) => {
+      const x = grid.ox + (point.x + 0.5) * grid.cell
+      const y = grid.oy + (point.y + 0.5) * grid.cell
+      ctx.strokeStyle = index ? COLORS.amber : COLORS.pink
+      ctx.lineWidth = 2
+      ctx.beginPath(); ctx.arc(x, y, Math.max(5, grid.cell * 0.8), 0, Math.PI * 2); ctx.stroke()
+    })
+  }
   return { count: points.length, label: `${visible} / ${points.length} 像素`, complexity: 'O(n)' }
 }
 
@@ -245,6 +263,7 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
   const canvasRef = useRef(null)
   const [dragTarget, setDragTarget] = useState(null)
   const [selectedClipPoint, setSelectedClipPoint] = useState(0)
+  const [linePointStage, setLinePointStage] = useState(0)
 
   const accent = experiment.accent
   const stats = useMemo(() => ({ count: 0, label: '准备就绪', complexity: '—' }), [])
@@ -284,6 +303,16 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
     return { x: (event.clientX - rect.left - transform.x) / transform.scale, y: (event.clientY - rect.top - transform.y) / transform.scale }
   }
 
+  const pointerToRaster = (event) => {
+    const canvas = canvasRef.current
+    const rect = canvas.getBoundingClientRect()
+    const { cell, ox, oy } = rasterMetrics(rect.width, rect.height, settings.pixelZoom)
+    const x = Math.floor((event.clientX - rect.left - ox) / cell)
+    const y = Math.floor((event.clientY - rect.top - oy) / cell)
+    if (x < 0 || x >= GRID.width || y < 0 || y >= GRID.height) return null
+    return { x, y }
+  }
+
   const onPointerDown = (event) => {
     let nextTarget = null
     if (experiment.id === 'bezier') {
@@ -309,7 +338,26 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
     }
   }
 
+  const onCanvasClick = (event) => {
+    if (experiment.id !== 'primitives' || !algorithm.includes('直线')) return
+    const point = pointerToRaster(event)
+    if (!point) return
+    if (linePointStage === 0) {
+      setSettings((current) => ({ ...current, x0: point.x, y0: point.y, x1: point.x, y1: point.y }))
+      setLinePointStage(1)
+    } else {
+      setSettings((current) => ({ ...current, x1: point.x, y1: point.y }))
+      setLinePointStage(0)
+    }
+    event.currentTarget.focus()
+  }
+
   const onPointerMove = (event) => {
+    if (experiment.id === 'primitives' && algorithm.includes('直线') && linePointStage === 1) {
+      const point = pointerToRaster(event)
+      if (point) setSettings((current) => ({ ...current, x1: point.x, y1: point.y }))
+      return
+    }
     if (!dragTarget) return
     if (dragTarget.type === 'bezier') {
       const p = pointerToBezier(event)
@@ -354,10 +402,11 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
   return (
     <canvas
       ref={canvasRef}
-      className="experiment-canvas"
+      className={`experiment-canvas ${experiment.id === 'primitives' && algorithm.includes('直线') ? 'is-line-drawing' : ''}`}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
+      onClick={onCanvasClick}
       onPointerUp={() => setDragTarget(null)}
       onPointerCancel={() => setDragTarget(null)}
       onKeyDown={onKeyDown}

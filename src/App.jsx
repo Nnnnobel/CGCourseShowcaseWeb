@@ -212,7 +212,7 @@ function App() {
           />
         </section>
 
-        <InsightDock experiment={experiment} algorithm={algorithm} />
+        <InsightDock experiment={experiment} algorithm={algorithm} progress={mode === 'standard' ? 1 : progress} />
       </main>
     </div>
   )

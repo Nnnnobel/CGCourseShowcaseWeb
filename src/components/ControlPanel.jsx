@@ -4,6 +4,7 @@ import {
   CircleDot,
   Gauge,
   GitCompareArrows,
+  MousePointer2,
   Palette,
   RefreshCcw,
   Route,
@@ -94,6 +95,12 @@ export default function ControlPanel({
 
         {experiment.id === 'primitives' && (
           <div className="control-group">
+            {algorithm.includes('直线') && (
+              <div className="feature-note">
+                <MousePointer2 size={17} />
+                <div><strong>直接在画布点击作图</strong><p>第一次点击确定起点，移动鼠标预览，第二次点击确定终点。</p></div>
+              </div>
+            )}
             {algorithm.includes('直线') ? (
               <>
                 <Slider label="起点 X" value={settings.x0} min={0} max={90} onChange={set(setSettings, 'x0')} />

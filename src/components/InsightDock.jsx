@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { Award, BookOpenText, CircleHelp, Code2, Lightbulb, MapPin, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Award, BookOpenText, CircleHelp, Code2, CodeXml, Lightbulb, MapPin, Sparkles } from 'lucide-react'
+import { activeCodeLine, algorithmCode } from '../data/algorithmCode'
 import { algorithmNotes } from '../data/experiments'
 
 const tabs = [
+  ['code', '代码', CodeXml],
   ['principle', '原理', BookOpenText],
   ['steps', '步骤', Code2],
   ['applications', '应用', Lightbulb],
@@ -10,9 +12,17 @@ const tabs = [
   ['help', '帮助', CircleHelp],
 ]
 
-export default function InsightDock({ experiment, algorithm }) {
-  const [tab, setTab] = useState('applications')
+export default function InsightDock({ experiment, algorithm, progress }) {
+  const [tab, setTab] = useState('code')
+  const codeScrollRef = useRef(null)
   const notes = algorithmNotes[experiment.id]?.[algorithm] || []
+  const snippet = algorithmCode[experiment.id]?.[algorithm]
+  const activeLine = activeCodeLine(experiment.id, algorithm, progress)
+
+  useEffect(() => {
+    const active = codeScrollRef.current?.querySelector('.is-active')
+    active?.scrollIntoView({ block: 'nearest' })
+  }, [activeLine, algorithm])
 
   return (
     <section className="insight-dock">
@@ -24,6 +34,21 @@ export default function InsightDock({ experiment, algorithm }) {
         ))}
       </div>
       <div className="dock-content">
+        {tab === 'code' && snippet && (
+          <div className="code-demo">
+            <div className="code-demo-heading">
+              <div><span className="eyebrow">C++ EXECUTION TRACE</span><h3>{algorithm}</h3></div>
+              <span>LINE {String(activeLine + 1).padStart(2, '0')}</span>
+            </div>
+            <pre ref={codeScrollRef}>
+              {snippet.lines.map((line, index) => (
+                <code key={`${algorithm}-${index}`} className={index === activeLine ? 'is-active' : ''}>
+                  <i>{String(index + 1).padStart(2, '0')}</i><span>{line || ' '}</span>
+                </code>
+              ))}
+            </pre>
+          </div>
+        )}
         {tab === 'principle' && (
           <div className="principle-copy">
             <span className="content-index">{experiment.index}</span>
