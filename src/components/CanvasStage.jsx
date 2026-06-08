@@ -12,6 +12,7 @@ import {
   bresenhamLine,
   cohenSutherland,
   ddaLine,
+  edgeFill,
   liangBarsky,
   midpointCircle,
   midpointEllipse,
@@ -46,7 +47,7 @@ const primitivePoints = (algorithm, s) => {
 const fillPoints = (algorithm) => {
   if (algorithm === '种子填充') return seedFill()
   if (algorithm === '逐点判别') return pointJudgeFill()
-  if (algorithm === '边缘填充') return scanlineFill().sort((a, b) => (a.x + a.y * 2) - (b.x + b.y * 2))
+  if (algorithm === '边缘填充') return edgeFill()
   return scanlineFill()
 }
 

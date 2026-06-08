@@ -37,8 +37,12 @@ export default function InsightDock({ experiment, algorithm, progress }) {
         {tab === 'code' && snippet && (
           <div className="code-demo">
             <div className="code-demo-heading">
-              <div><span className="eyebrow">C++ EXECUTION TRACE</span><h3>{algorithm}</h3></div>
-              <span>LINE {String(activeLine + 1).padStart(2, '0')}</span>
+              <div>
+                <span className="eyebrow">C++ EQUIVALENT · SAME LOGIC</span>
+                <h3>{algorithm}</h3>
+                <p>与当前画布算法及参数处理保持一致</p>
+              </div>
+              <span>执行至 LINE {String(activeLine + 1).padStart(2, '0')}</span>
             </div>
             <pre ref={codeScrollRef}>
               {snippet.lines.map((line, index) => (

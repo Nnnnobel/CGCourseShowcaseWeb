@@ -194,6 +194,28 @@ export function scanlineFill(polygon = FILL_POLYGON) {
   return points
 }
 
+export function edgeFill(polygon = FILL_POLYGON) {
+  const flags = new Set()
+  polygon.forEach((a, index) => {
+    const b = polygon[(index + 1) % polygon.length]
+    if (a.y === b.y) return
+    const minY = Math.min(a.y, b.y)
+    const maxY = Math.max(a.y, b.y)
+    for (let y = minY; y < maxY; y += 1) {
+      const xIntersection = a.x + ((y - a.y) * (b.x - a.x)) / (b.y - a.y)
+      for (let x = Math.ceil(xIntersection); x < GRID.width; x += 1) {
+        const key = `${x},${y}`
+        if (flags.has(key)) flags.delete(key)
+        else flags.add(key)
+      }
+    }
+  })
+  return [...flags].map((key) => {
+    const [x, y] = key.split(',').map(Number)
+    return { x, y }
+  }).sort((a, b) => (a.y - b.y) || (a.x - b.x))
+}
+
 export function pointJudgeFill() {
   const points = []
   for (let y = 0; y < GRID.height; y += 1) {

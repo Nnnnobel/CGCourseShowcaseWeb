@@ -4,12 +4,14 @@ import {
   BEZIER_POINTS,
   CLIP_POLYGON,
   CLIP_RECT,
+  FILL_POLYGON,
   TRANSFORM_POLYGON,
   bezierCurve,
   bresenhamCircle,
   bresenhamLine,
   cohenSutherland,
   ddaLine,
+  edgeFill,
   midpointCircle,
   midpointEllipse,
   scanlineFill,
@@ -50,6 +52,17 @@ test('fill algorithms produce a bounded non-empty interior', () => {
     assert.ok(points.length > 500)
     assert.ok(points.every((point) => point.x >= 0 && point.x < 92 && point.y >= 0 && point.y < 64))
   }
+})
+
+test('edge fill uses parity toggling with only half-open boundary differences', () => {
+  const scanline = new Set(scanlineFill().map(key))
+  const edge = new Set(edgeFill().map(key))
+  const missing = [...scanline].filter((point) => !edge.has(point))
+  const vertices = new Set(FILL_POLYGON.map(key))
+  assert.equal(edge.size, 2327)
+  assert.ok(missing.length > 0)
+  assert.ok(missing.every((point) => vertices.has(point)))
+  assert.equal([...edge].filter((point) => !scanline.has(point)).length, 0)
 })
 
 test('line clipping keeps the result inside the clipping rectangle', () => {
@@ -95,4 +108,14 @@ test('image rasterization preserves, grayscales, and quantizes sampled colors', 
   assert.deepEqual(applyImageMode(18, 140, 233, 'color'), [18, 140, 233])
   assert.deepEqual(applyImageMode(100, 150, 200, 'grayscale'), [141, 141, 141])
   assert.deepEqual(applyImageMode(18, 140, 233, 'quantized'), [0, 128, 255])
+})
+
+test('image C++ demo includes the same bounds, aspect cap, and color formulas', () => {
+  const source = algorithmCode.primitives['图像光栅化'].lines.join('\n')
+  assert.match(source, /clamp\(requestedColumns, 16, 96\)/)
+  assert.match(source, /rows > 72/)
+  assert.match(source, /\.299.*\.587.*\.114/)
+  assert.match(source, /lround\(v\/64\.0\)/)
+  assert.match(source, /index % columns/)
+  assert.match(source, /index \/ columns/)
 })
