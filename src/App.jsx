@@ -18,7 +18,7 @@ import CanvasStage from './components/CanvasStage'
 import ControlPanel from './components/ControlPanel'
 import InsightDock from './components/InsightDock'
 import { experiments } from './data/experiments'
-import { BEZIER_POINTS, CLIP_LINE } from './lib/algorithms'
+import { BEZIER_POINTS, CLIP_LINE, CLIP_POLYGON, FILL_POLYGON } from './lib/algorithms'
 
 const defaultSettings = {
   x0: 8, y0: 9, x1: 72, y1: 43, cx: 45, cy: 31, radius: 20, rx: 31, ry: 18,
@@ -26,6 +26,8 @@ const defaultSettings = {
   lineWidth: 1, lineStyle: 'solid', pixelZoom: 1,
   imageSource: null, imageName: '', imageResolution: 48, imageMode: 'color',
   construction: true, bezierPoints: BEZIER_POINTS, clipLine: CLIP_LINE,
+  fillPolygon: FILL_POLYGON, fillEditMode: 'move', selectedFillVertex: 0,
+  clipPolygon: CLIP_POLYGON, clipEditMode: 'move', selectedClipVertex: 0,
 }
 
 function App() {

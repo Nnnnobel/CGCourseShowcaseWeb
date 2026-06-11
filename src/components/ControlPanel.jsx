@@ -7,11 +7,13 @@ import {
   ImageUp,
   MousePointer2,
   Palette,
+  Plus,
   RefreshCcw,
   Route,
   Sparkles,
+  Trash2,
 } from 'lucide-react'
-import { BEZIER_POINTS, CLIP_LINE } from '../lib/algorithms'
+import { BEZIER_POINTS, CLIP_LINE, CLIP_POLYGON, FILL_POLYGON } from '../lib/algorithms'
 
 function Slider({ label, value, min, max, step = 1, onChange, unit = '' }) {
   return (
@@ -65,6 +67,8 @@ export default function ControlPanel({
     lineWidth: 1, lineStyle: 'solid', pixelZoom: 1,
     imageSource: null, imageName: '', imageResolution: 48, imageMode: 'color',
     construction: true, bezierPoints: BEZIER_POINTS, clipLine: CLIP_LINE,
+    fillPolygon: FILL_POLYGON, fillEditMode: 'move', selectedFillVertex: 0,
+    clipPolygon: CLIP_POLYGON, clipEditMode: 'move', selectedClipVertex: 0,
   })
   const matrix = transformMatrix(algorithm, settings)
   const onImageUpload = (event) => {
@@ -175,24 +179,125 @@ export default function ControlPanel({
         )}
 
         {experiment.id === 'fill' && (
-          <div className="control-group feature-note">
-            <CircleDot size={17} />
-            <div><strong>固定六边形样本</strong><p>切换算法观察相同区域的不同生成顺序。</p></div>
+          <div className="control-group">
+            <div className="polygon-mode" aria-label="多边形编辑模式">
+              <button
+                type="button"
+                className={settings.fillEditMode !== 'add' ? 'is-active' : ''}
+                onClick={() => setSettings((current) => ({ ...current, fillEditMode: 'move' }))}
+              >
+                <MousePointer2 size={14} />拖动顶点
+              </button>
+              <button
+                type="button"
+                className={settings.fillEditMode === 'add' ? 'is-active' : ''}
+                disabled={(settings.fillPolygon || FILL_POLYGON).length >= 12}
+                onClick={() => setSettings((current) => ({ ...current, fillEditMode: 'add' }))}
+              >
+                <Plus size={14} />点击加点
+              </button>
+            </div>
+            <div className="polygon-actions">
+              <button
+                type="button"
+                disabled={(settings.fillPolygon || FILL_POLYGON).length <= 3}
+                onClick={() => setSettings((current) => {
+                  const polygon = current.fillPolygon || FILL_POLYGON
+                  const selected = Math.min(current.selectedFillVertex || 0, polygon.length - 1)
+                  const next = polygon.filter((_, index) => index !== selected)
+                  return { ...current, fillPolygon: next, selectedFillVertex: Math.min(selected, next.length - 1) }
+                })}
+              >
+                <Trash2 size={14} />删除选中点
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettings((current) => ({
+                  ...current,
+                  fillPolygon: FILL_POLYGON,
+                  fillEditMode: 'move',
+                  selectedFillVertex: 0,
+                }))}
+              >
+                <RefreshCcw size={14} />恢复形状
+              </button>
+            </div>
+            <div className="feature-note">
+              <CircleDot size={17} />
+              <div>
+                <strong>{(settings.fillPolygon || FILL_POLYGON).length} 个顶点 · 当前 P{(settings.selectedFillVertex || 0) + 1}</strong>
+                <p>拖动顶点实时重算；加点模式会在最近的边上插入新顶点。</p>
+              </div>
+            </div>
           </div>
         )}
 
         {experiment.id === 'clipping' && (
           <div className="control-group">
-            <div className="feature-note">
-              <Route size={17} />
-              <div><strong>拖动青色与黄色端点</strong><p>按 1 / 2 选点，方向键移动，Shift 加速。</p></div>
-            </div>
-            {algorithm !== 'Sutherland-Hodgman' && (
-              <div className="clip-coordinates">
-                {(settings.clipLine || CLIP_LINE).map((point, index) => (
-                  <div key={index}><b>P{index + 1}</b><span>x {Math.round(point.x)}</span><span>y {Math.round(point.y)}</span></div>
-                ))}
-              </div>
+            {algorithm === 'Sutherland-Hodgman' ? (
+              <>
+                <div className="polygon-mode" aria-label="裁剪多边形编辑模式">
+                  <button
+                    type="button"
+                    className={settings.clipEditMode !== 'add' ? 'is-active' : ''}
+                    onClick={() => setSettings((current) => ({ ...current, clipEditMode: 'move' }))}
+                  >
+                    <MousePointer2 size={14} />拖动顶点
+                  </button>
+                  <button
+                    type="button"
+                    className={settings.clipEditMode === 'add' ? 'is-active' : ''}
+                    disabled={(settings.clipPolygon || CLIP_POLYGON).length >= 12}
+                    onClick={() => setSettings((current) => ({ ...current, clipEditMode: 'add' }))}
+                  >
+                    <Plus size={14} />点击加点
+                  </button>
+                </div>
+                <div className="polygon-actions">
+                  <button
+                    type="button"
+                    disabled={(settings.clipPolygon || CLIP_POLYGON).length <= 3}
+                    onClick={() => setSettings((current) => {
+                      const polygon = current.clipPolygon || CLIP_POLYGON
+                      const selected = Math.min(current.selectedClipVertex || 0, polygon.length - 1)
+                      const next = polygon.filter((_, index) => index !== selected)
+                      return { ...current, clipPolygon: next, selectedClipVertex: Math.min(selected, next.length - 1) }
+                    })}
+                  >
+                    <Trash2 size={14} />删除选中点
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettings((current) => ({
+                      ...current,
+                      clipPolygon: CLIP_POLYGON,
+                      clipEditMode: 'move',
+                      selectedClipVertex: 0,
+                    }))}
+                  >
+                    <RefreshCcw size={14} />恢复形状
+                  </button>
+                </div>
+                <div className="feature-note">
+                  <Route size={17} />
+                  <div>
+                    <strong>{(settings.clipPolygon || CLIP_POLYGON).length} 个输入顶点 · 当前 P{(settings.selectedClipVertex || 0) + 1}</strong>
+                    <p>编辑原始多边形，蓝色裁剪结果与四步过程会实时更新。</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="feature-note">
+                  <Route size={17} />
+                  <div><strong>拖动青色与黄色端点</strong><p>按 1 / 2 选点，方向键移动，Shift 加速。</p></div>
+                </div>
+                <div className="clip-coordinates">
+                  {(settings.clipLine || CLIP_LINE).map((point, index) => (
+                    <div key={index}><b>P{index + 1}</b><span>x {Math.round(point.x)}</span><span>y {Math.round(point.y)}</span></div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}

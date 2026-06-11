@@ -44,11 +44,11 @@ const primitivePoints = (algorithm, s) => {
   return midpointEllipse(s.cx, s.cy, s.rx, s.ry)
 }
 
-const fillPoints = (algorithm) => {
-  if (algorithm === '种子填充') return seedFill()
-  if (algorithm === '逐点判别') return pointJudgeFill()
-  if (algorithm === '边缘填充') return edgeFill()
-  return scanlineFill()
+const fillPoints = (algorithm, polygon) => {
+  if (algorithm === '种子填充') return seedFill(polygon)
+  if (algorithm === '逐点判别') return pointJudgeFill(polygon)
+  if (algorithm === '边缘填充') return edgeFill(polygon)
+  return scanlineFill(polygon)
 }
 
 function resizeCanvas(canvas) {
@@ -225,13 +225,35 @@ function drawImageRaster(ctx, width, height, image, settings, progress) {
 }
 
 function drawFill(ctx, width, height, algorithm, settings, progress, compare) {
-  const points = fillPoints(algorithm)
+  const polygon = settings.fillPolygon || FILL_POLYGON
+  const points = fillPoints(algorithm, polygon)
   const visible = Math.max(1, Math.ceil(points.length * progress))
   const boundary = []
-  FILL_POLYGON.forEach((a, index) => boundary.push(...bresenhamLine(a.x, a.y, FILL_POLYGON[(index + 1) % FILL_POLYGON.length].x, FILL_POLYGON[(index + 1) % FILL_POLYGON.length].y)))
-  if (compare) drawRaster(ctx, width, height, pointJudgeFill(), pointJudgeFill().length, 'rgba(251, 191, 36, .15)')
-  drawRaster(ctx, width, height, points, visible, settings.color, boundary)
+  polygon.forEach((a, index) => boundary.push(...bresenhamLine(a.x, a.y, polygon[(index + 1) % polygon.length].x, polygon[(index + 1) % polygon.length].y)))
+  const reference = compare ? pointJudgeFill(polygon) : []
+  if (compare) drawRaster(ctx, width, height, reference, reference.length, 'rgba(251, 191, 36, .15)')
+  const grid = drawRaster(ctx, width, height, points, visible, settings.color, boundary)
+  polygon.forEach((point, index) => {
+    const x = grid.ox + (point.x + 0.5) * grid.cell
+    const y = grid.oy + (point.y + 0.5) * grid.cell
+    const selected = index === (settings.selectedFillVertex || 0)
+    ctx.fillStyle = selected ? COLORS.amber : COLORS.pink
+    ctx.strokeStyle = '#071015'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(x, y, Math.max(selected ? 7 : 5, grid.cell * (selected ? 1.05 : 0.78)), 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
+  })
   return { count: points.length, label: `${visible} / ${points.length} 填充点`, complexity: algorithm === '逐点判别' ? 'O(W×H×E)' : 'O(H×E)' }
+}
+
+function pointSegmentDistance(point, a, b) {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  if (!dx && !dy) return Math.hypot(point.x - a.x, point.y - a.y)
+  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)))
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy))
 }
 
 function drawClipping(ctx, width, height, algorithm, settings, progress, selectedClipPoint) {
@@ -246,15 +268,27 @@ function drawClipping(ctx, width, height, algorithm, settings, progress, selecte
 
   const line = settings.clipLine || CLIP_LINE
   if (algorithm === 'Sutherland-Hodgman') {
-    path(ctx, CLIP_POLYGON, transform, true)
+    const polygon = settings.clipPolygon || CLIP_POLYGON
+    path(ctx, polygon, transform, true)
     ctx.strokeStyle = 'rgba(232, 240, 242, .35)'
     ctx.setLineDash([8, 8]); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([])
-    const stages = sutherlandHodgmanStages(CLIP_POLYGON)
+    const stages = sutherlandHodgmanStages(polygon)
     const stageIndex = Math.min(4, Math.floor(progress * 4))
     const result = stages[stageIndex]
     path(ctx, result, transform, true)
     ctx.fillStyle = 'rgba(56, 189, 248, .18)'; ctx.fill()
     ctx.strokeStyle = COLORS.blue; ctx.lineWidth = 4; ctx.stroke()
+    polygon.forEach((point, index) => {
+      const q = transform.point(point)
+      const selected = index === (settings.selectedClipVertex || 0)
+      ctx.fillStyle = selected ? COLORS.amber : COLORS.pink
+      ctx.strokeStyle = '#071015'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, selected ? 9 : 7, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+    })
     return { count: result.length, label: stageIndex === 4 ? `${result.length} 个输出顶点` : `第 ${stageIndex} / 4 条边`, complexity: 'O(4n)' }
   }
   path(ctx, line, transform)
@@ -428,6 +462,24 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
         .findIndex((candidate) => Math.hypot(candidate.x - p.x, candidate.y - p.y) < 28)
       if (index >= 0) nextTarget = { type: 'bezier', index }
     }
+    if (experiment.id === 'fill' && settings.fillEditMode !== 'add') {
+      const p = pointerToRaster(event)
+      const polygon = settings.fillPolygon || FILL_POLYGON
+      const index = p ? polygon.findIndex((candidate) => Math.hypot(candidate.x - p.x, candidate.y - p.y) < 3.5) : -1
+      if (index >= 0) {
+        nextTarget = { type: 'fill', index }
+        setSettings((current) => ({ ...current, selectedFillVertex: index }))
+      }
+    }
+    if (experiment.id === 'clipping' && algorithm === 'Sutherland-Hodgman' && settings.clipEditMode !== 'add') {
+      const p = pointerToClipping(event)
+      const polygon = settings.clipPolygon || CLIP_POLYGON
+      const index = polygon.findIndex((candidate) => Math.hypot(candidate.x - p.x, candidate.y - p.y) < 28)
+      if (index >= 0) {
+        nextTarget = { type: 'clipPolygon', index }
+        setSettings((current) => ({ ...current, selectedClipVertex: index }))
+      }
+    }
     if (experiment.id === 'clipping' && algorithm !== 'Sutherland-Hodgman') {
       const p = pointerToClipping(event)
       const points = settings.clipLine || CLIP_LINE
@@ -445,6 +497,32 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
   }
 
   const onCanvasClick = (event) => {
+    if (experiment.id === 'clipping' && algorithm === 'Sutherland-Hodgman' && settings.clipEditMode === 'add') {
+      const point = pointerToClipping(event)
+      const polygon = settings.clipPolygon || CLIP_POLYGON
+      if (polygon.length >= 12) return
+      const edgeIndex = polygon.reduce((best, a, index) => {
+        const distance = pointSegmentDistance(point, a, polygon[(index + 1) % polygon.length])
+        return distance < best.distance ? { index, distance } : best
+      }, { index: 0, distance: Number.POSITIVE_INFINITY }).index
+      const next = [...polygon.slice(0, edgeIndex + 1), point, ...polygon.slice(edgeIndex + 1)]
+      setSettings((current) => ({ ...current, clipPolygon: next, selectedClipVertex: edgeIndex + 1 }))
+      event.currentTarget.focus()
+      return
+    }
+    if (experiment.id === 'fill' && settings.fillEditMode === 'add') {
+      const point = pointerToRaster(event)
+      const polygon = settings.fillPolygon || FILL_POLYGON
+      if (!point || polygon.length >= 12) return
+      const edgeIndex = polygon.reduce((best, a, index) => {
+        const distance = pointSegmentDistance(point, a, polygon[(index + 1) % polygon.length])
+        return distance < best.distance ? { index, distance } : best
+      }, { index: 0, distance: Number.POSITIVE_INFINITY }).index
+      const next = [...polygon.slice(0, edgeIndex + 1), point, ...polygon.slice(edgeIndex + 1)]
+      setSettings((current) => ({ ...current, fillPolygon: next, selectedFillVertex: edgeIndex + 1 }))
+      event.currentTarget.focus()
+      return
+    }
     if (experiment.id !== 'primitives' || !algorithm.includes('直线')) return
     const point = pointerToRaster(event)
     if (!point) return
@@ -465,6 +543,21 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
       return
     }
     if (!dragTarget) return
+    if (dragTarget.type === 'clipPolygon') {
+      const p = pointerToClipping(event)
+      const next = [...(settings.clipPolygon || CLIP_POLYGON)].map((point) => ({ ...point }))
+      next[dragTarget.index] = { x: Math.max(0, Math.min(820, p.x)), y: Math.max(0, Math.min(560, p.y)) }
+      setSettings((current) => ({ ...current, clipPolygon: next, selectedClipVertex: dragTarget.index }))
+      return
+    }
+    if (dragTarget.type === 'fill') {
+      const p = pointerToRaster(event)
+      if (!p) return
+      const next = [...(settings.fillPolygon || FILL_POLYGON)].map((point) => ({ ...point }))
+      next[dragTarget.index] = p
+      setSettings((current) => ({ ...current, fillPolygon: next, selectedFillVertex: dragTarget.index }))
+      return
+    }
     if (dragTarget.type === 'bezier') {
       const p = pointerToBezier(event)
       const next = [...(settings.bezierPoints || BEZIER_POINTS)].map((point) => ({ ...point }))
@@ -508,7 +601,17 @@ export default function CanvasStage({ experiment, algorithm, settings, setSettin
   return (
     <canvas
       ref={canvasRef}
-      className={`experiment-canvas ${experiment.id === 'primitives' && algorithm.includes('直线') ? 'is-line-drawing' : ''}`}
+      className={`experiment-canvas ${
+        experiment.id === 'primitives' && algorithm.includes('直线') ? 'is-line-drawing' : ''
+      } ${
+        experiment.id === 'fill'
+          ? (settings.fillEditMode === 'add' ? 'is-polygon-adding' : 'is-polygon-editing')
+          : ''
+      } ${
+        experiment.id === 'clipping' && algorithm === 'Sutherland-Hodgman'
+          ? (settings.clipEditMode === 'add' ? 'is-polygon-adding' : 'is-polygon-editing')
+          : ''
+      }`}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}

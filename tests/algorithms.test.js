@@ -14,6 +14,7 @@ import {
   edgeFill,
   midpointCircle,
   midpointEllipse,
+  pointJudgeFill,
   scanlineFill,
   seedFill,
   sutherlandHodgman,
@@ -54,6 +55,17 @@ test('fill algorithms produce a bounded non-empty interior', () => {
   }
 })
 
+test('all fill algorithms accept an edited polygon', () => {
+  const edited = [
+    { x: 14, y: 14 }, { x: 70, y: 12 }, { x: 78, y: 45 },
+    { x: 48, y: 53 }, { x: 20, y: 43 },
+  ]
+  for (const points of [scanlineFill(edited), edgeFill(edited), seedFill(edited), pointJudgeFill(edited)]) {
+    assert.ok(points.length > 300)
+    assert.ok(points.every((point) => point.x >= 0 && point.x < 92 && point.y >= 0 && point.y < 64))
+  }
+})
+
 test('edge fill uses parity toggling with only half-open boundary differences', () => {
   const scanline = new Set(scanlineFill().map(key))
   const edge = new Set(edgeFill().map(key))
@@ -78,6 +90,20 @@ test('polygon clipping exposes four intermediate edge stages', () => {
   const stages = sutherlandHodgmanStages(CLIP_POLYGON)
   assert.equal(stages.length, 5)
   assert.deepEqual(stages.at(-1), sutherlandHodgman(CLIP_POLYGON))
+  assert.ok(stages.at(-1).every((point) => (
+    point.x >= CLIP_RECT.minX && point.x <= CLIP_RECT.maxX
+    && point.y >= CLIP_RECT.minY && point.y <= CLIP_RECT.maxY
+  )))
+})
+
+test('polygon clipping accepts edited input vertices', () => {
+  const edited = [
+    { x: 80, y: 90 }, { x: 410, y: 45 }, { x: 760, y: 210 },
+    { x: 570, y: 500 }, { x: 160, y: 440 },
+  ]
+  const stages = sutherlandHodgmanStages(edited)
+  assert.equal(stages.length, 5)
+  assert.ok(stages.at(-1).length >= 3)
   assert.ok(stages.at(-1).every((point) => (
     point.x >= CLIP_RECT.minX && point.x <= CLIP_RECT.maxX
     && point.y >= CLIP_RECT.minY && point.y <= CLIP_RECT.maxY

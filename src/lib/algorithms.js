@@ -174,6 +174,7 @@ function pointInPolygon(point, polygon = FILL_POLYGON) {
 }
 
 export function scanlineFill(polygon = FILL_POLYGON) {
+  if (polygon.length < 3) return []
   const points = []
   const minY = Math.min(...polygon.map((p) => p.y))
   const maxY = Math.max(...polygon.map((p) => p.y))
@@ -195,6 +196,7 @@ export function scanlineFill(polygon = FILL_POLYGON) {
 }
 
 export function edgeFill(polygon = FILL_POLYGON) {
+  if (polygon.length < 3) return []
   const flags = new Set()
   polygon.forEach((a, index) => {
     const b = polygon[(index + 1) % polygon.length]
@@ -216,21 +218,31 @@ export function edgeFill(polygon = FILL_POLYGON) {
   }).sort((a, b) => (a.y - b.y) || (a.x - b.x))
 }
 
-export function pointJudgeFill() {
+export function pointJudgeFill(polygon = FILL_POLYGON) {
+  if (polygon.length < 3) return []
   const points = []
   for (let y = 0; y < GRID.height; y += 1) {
-    for (let x = 0; x < GRID.width; x += 1) if (pointInPolygon({ x, y })) points.push({ x, y })
+    for (let x = 0; x < GRID.width; x += 1) if (pointInPolygon({ x, y }, polygon)) points.push({ x, y })
   }
   return points
 }
 
-export function seedFill() {
+export function seedFill(polygon = FILL_POLYGON) {
+  if (polygon.length < 3) return []
   const boundary = new Set()
-  FILL_POLYGON.forEach((a, index) => {
-    bresenhamLine(a.x, a.y, FILL_POLYGON[(index + 1) % FILL_POLYGON.length].x, FILL_POLYGON[(index + 1) % FILL_POLYGON.length].y)
+  polygon.forEach((a, index) => {
+    bresenhamLine(a.x, a.y, polygon[(index + 1) % polygon.length].x, polygon[(index + 1) % polygon.length].y)
       .forEach((p) => boundary.add(`${p.x},${p.y}`))
   })
-  const queue = [{ x: 45, y: 31 }]
+  const candidates = pointJudgeFill(polygon).filter((p) => !boundary.has(`${p.x},${p.y}`))
+  if (!candidates.length) return []
+  const center = polygon.reduce((sum, p) => ({ x: sum.x + p.x, y: sum.y + p.y }), { x: 0, y: 0 })
+  center.x /= polygon.length
+  center.y /= polygon.length
+  const seed = candidates.reduce((best, p) => (
+    Math.hypot(p.x - center.x, p.y - center.y) < Math.hypot(best.x - center.x, best.y - center.y) ? p : best
+  ))
+  const queue = [seed]
   const visited = new Set()
   const points = []
   for (let cursor = 0; cursor < queue.length; cursor += 1) {

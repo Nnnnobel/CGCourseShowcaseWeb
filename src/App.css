@@ -116,6 +116,9 @@ button { border: 0; cursor: pointer; }
 .playback output { width: 32px; color: #77868b; font: 10px ui-monospace, monospace; }
 .canvas-wrap { position: relative; min-height: 0; background: #071116; }
 .experiment-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.experiment-canvas.is-polygon-editing { cursor: grab; }
+.experiment-canvas.is-polygon-editing:active { cursor: grabbing; }
+.experiment-canvas.is-polygon-adding { cursor: crosshair; }
 .experiment-canvas.is-line-drawing { cursor: crosshair; }
 .experiment-canvas:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
 .canvas-corners i { position: absolute; width: 22px; height: 22px; border-color: color-mix(in srgb, var(--accent) 45%, transparent); pointer-events: none; }
@@ -145,6 +148,14 @@ button { border: 0; cursor: pointer; }
 .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; background: #111f24; border: 1px solid var(--line); }
 .mode-switch button { height: 30px; color: #718086; background: transparent; font-size: 10px; }
 .mode-switch button.is-active { color: #071015; background: var(--accent); font-weight: 700; }
+.polygon-mode, .polygon-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.polygon-mode button, .polygon-actions button {
+  min-width: 0; height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  color: #849398; background: #111f24; border: 1px solid var(--line); font-size: 10px;
+}
+.polygon-mode button.is-active { color: #071015; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.polygon-actions button:hover:not(:disabled) { color: #dce7e9; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.polygon-mode button:disabled, .polygon-actions button:disabled { cursor: not-allowed; opacity: .35; }
 .slider-control { display: grid; grid-template-columns: 68px 1fr 44px; align-items: center; gap: 8px; }
 .slider-control > span { color: #849398; font-size: 10px; }
 .slider-control input { width: 100%; accent-color: var(--accent); }
