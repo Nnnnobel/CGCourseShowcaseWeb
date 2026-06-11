@@ -372,9 +372,18 @@ export function transformPoints(points, { dx = 0, dy = 0, sx = 1, sy = 1, angle 
   return moved
 }
 
+export const MIN_BEZIER_DEGREE = 2
+export const MAX_BEZIER_DEGREE = 10
+export const BEZIER_DEGREES = Array.from(
+  { length: MAX_BEZIER_DEGREE - MIN_BEZIER_DEGREE + 1 },
+  (_, index) => MIN_BEZIER_DEGREE + index,
+)
+
 export const BEZIER_POINTS = [
   { x: 110, y: 420 }, { x: 260, y: 100 }, { x: 520, y: 130 },
-  { x: 720, y: 430 }, { x: 820, y: 210 },
+  { x: 720, y: 430 }, { x: 820, y: 210 }, { x: 760, y: 90 },
+  { x: 610, y: 300 }, { x: 470, y: 470 }, { x: 300, y: 390 },
+  { x: 150, y: 180 }, { x: 840, y: 360 },
 ]
 
 export function deCasteljau(points, t) {

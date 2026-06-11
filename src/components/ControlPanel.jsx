@@ -230,7 +230,10 @@ export default function ControlPanel({
             <Toggle checked={settings.construction} onChange={set(setSettings, 'construction')} label="显示 De Casteljau 构造" icon={Braces} />
             <div className="feature-note">
               <CircleDot size={17} />
-              <div><strong>直接拖动控制点</strong><p>曲线和递推辅助线会实时重算。</p></div>
+              <div>
+                <strong>{Number.parseInt(algorithm, 10)} 阶 · {Number.parseInt(algorithm, 10) + 1} 个控制点</strong>
+                <p>直接拖动控制点，曲线和递推辅助线会实时重算。</p>
+              </div>
             </div>
           </div>
         )}

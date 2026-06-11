@@ -333,10 +333,17 @@ function drawBezier(ctx, width, height, algorithm, settings, progress) {
   }
   controls.forEach((p, index) => {
     const q = transform.point(p)
-    ctx.fillStyle = COLORS.pink; ctx.beginPath(); ctx.arc(q.x, q.y, 8, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = COLORS.ink; ctx.font = '600 12px Inter, system-ui'; ctx.fillText(`P${index}`, q.x + 11, q.y - 10)
+    const compact = degree >= 7
+    ctx.fillStyle = COLORS.pink; ctx.beginPath(); ctx.arc(q.x, q.y, compact ? 6 : 8, 0, Math.PI * 2); ctx.fill()
+    ctx.fillStyle = COLORS.ink
+    ctx.font = `600 ${compact ? 10 : 12}px Inter, system-ui`
+    ctx.fillText(`P${index}`, q.x + (compact ? 8 : 11), q.y - (compact ? 7 : 10))
   })
-  return { count: curve.length, label: `${Math.round(progress * 100)}% 曲线`, complexity: `O(${degree}² × samples)` }
+  return {
+    count: curve.length,
+    label: `${degree} 阶 · ${degree + 1} 控制点 · ${Math.round(progress * 100)}%`,
+    complexity: `O(${degree}² × samples)`,
+  }
 }
 
 export default function CanvasStage({ experiment, algorithm, settings, setSettings, progress, compare, onStats }) {

@@ -89,13 +89,15 @@ test('transform and Bezier endpoints remain mathematically correct', () => {
   assert.equal(translated[0].x, TRANSFORM_POLYGON[0].x + 25)
   assert.equal(translated[0].y, TRANSFORM_POLYGON[0].y - 10)
 
-  const curve = bezierCurve(BEZIER_POINTS.slice(0, 4), 100)
+  const curve = bezierCurve(BEZIER_POINTS, 100)
   assert.deepEqual(curve[0], BEZIER_POINTS[0])
-  assert.deepEqual(curve.at(-1), BEZIER_POINTS[3])
+  assert.deepEqual(curve.at(-1), BEZIER_POINTS[10])
+  assert.equal(BEZIER_POINTS.length, 11)
+  assert.ok(curve.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y)))
 })
 
 test('every selectable algorithm has a C++ execution trace', () => {
-  const expectedCounts = { primitives: 7, fill: 4, clipping: 3, transform: 4, bezier: 3 }
+  const expectedCounts = { primitives: 7, fill: 4, clipping: 3, transform: 4, bezier: 9 }
   for (const [experiment, count] of Object.entries(expectedCounts)) {
     const snippets = Object.values(algorithmCode[experiment])
     assert.equal(snippets.length, count)

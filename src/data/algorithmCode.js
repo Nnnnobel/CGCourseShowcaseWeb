@@ -2,6 +2,28 @@ const code = (lines, trace) => ({ lines, trace })
 
 const circleLoop = [0, 1, 2, 3, 4, 5, 6, 3, 4, 5, 6, 7]
 const fillLoop = [0, 1, 2, 3, 4, 5, 6, 4, 5, 6, 7]
+const bezierDegrees = Array.from({ length: 9 }, (_, index) => index + 2)
+
+const bezierSnippet = (degree) => code([
+  `constexpr int DEGREE = ${degree};`,
+  'Point deCasteljau(vector<Point> work, double t) {',
+  '  for (int level=1; level<=DEGREE; ++level)',
+  '    for (int i=0; i<=DEGREE-level; ++i) {',
+  '      work[i].x=(1-t)*work[i].x+t*work[i+1].x;',
+  '      work[i].y=(1-t)*work[i].y+t*work[i+1].y;',
+  '    }',
+  '  return work[0];',
+  '}',
+  'vector<Point> buildCurve(const vector<Point>& controls) {',
+  '  if (controls.size() != DEGREE + 1) return {};',
+  '  vector<Point> curve;',
+  '  for (int i=0; i<=320; ++i) {',
+  '    double t = i / 320.0;',
+  '    curve.push_back(deCasteljau(controls, t));',
+  '  }',
+  '  return curve;',
+  '}',
+], [0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 12, 13, 14, 15, 16, 17])
 
 export const algorithmCode = {
   primitives: {
@@ -318,56 +340,10 @@ export const algorithmCode = {
       '}',
     ], [0, 1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 15, 12, 13, 14, 15, 16, 17]),
   },
-  bezier: {
-    '2 阶 Bezier': code([
-      'Point deCasteljau(vector<Point> work, double t) {',
-      '  for (int level=1; level<work.size(); ++level)',
-      '    for (int i=0; i<work.size()-level; ++i) {',
-      '      work[i].x=(1-t)*work[i].x+t*work[i+1].x;',
-      '      work[i].y=(1-t)*work[i].y+t*work[i+1].y;',
-      '    }',
-      '  return work[0];',
-      '}',
-      'vector<Point> buildCurve(const vector<Point>& p) {',
-      '  vector<Point> curve;',
-      '  for (int i=0; i<=320; ++i)',
-      '    curve.push_back(deCasteljau(p,i/320.0));',
-      '  return curve;',
-      '}',
-    ], [0, 1, 2, 3, 4, 2, 3, 4, 5, 6, 8, 9, 10, 11, 10, 11, 12, 13]),
-    '3 阶 Bezier': code([
-      'Point deCasteljau(vector<Point> work, double t) {',
-      '  for (int level=1; level<work.size(); ++level)',
-      '    for (int i=0; i<work.size()-level; ++i) {',
-      '      work[i].x=(1-t)*work[i].x+t*work[i+1].x;',
-      '      work[i].y=(1-t)*work[i].y+t*work[i+1].y;',
-      '    }',
-      '  return work[0];',
-      '}',
-      'vector<Point> buildCurve(const vector<Point>& p) {',
-      '  vector<Point> curve;',
-      '  for (int i=0; i<=320; ++i)',
-      '    curve.push_back(deCasteljau(p,i/320.0));',
-      '  return curve;',
-      '}',
-    ], [0, 1, 2, 3, 4, 2, 3, 4, 5, 6, 8, 9, 10, 11, 10, 11, 12, 13]),
-    '4 阶 Bezier': code([
-      'Point deCasteljau(vector<Point> work, double t) {',
-      '  for (int level=1; level<work.size(); ++level)',
-      '    for (int i=0; i<work.size()-level; ++i) {',
-      '      work[i].x=(1-t)*work[i].x+t*work[i+1].x;',
-      '      work[i].y=(1-t)*work[i].y+t*work[i+1].y;',
-      '    }',
-      '  return work[0];',
-      '}',
-      'vector<Point> buildCurve(const vector<Point>& p) {',
-      '  vector<Point> curve;',
-      '  for (int i=0; i<=320; ++i)',
-      '    curve.push_back(deCasteljau(p,i/320.0));',
-      '  return curve;',
-      '}',
-    ], [0, 1, 2, 3, 4, 2, 3, 4, 5, 6, 8, 9, 10, 11, 10, 11, 12, 13]),
-  },
+  bezier: Object.fromEntries(bezierDegrees.map((degree) => [
+    `${degree} 阶 Bezier`,
+    bezierSnippet(degree),
+  ])),
 }
 
 export function activeCodeLine(experimentId, algorithm, progress) {

@@ -1,4 +1,7 @@
 import { Blend, BoxSelect, Crop, Grid3X3, PenTool } from 'lucide-react'
+import { BEZIER_DEGREES } from '../lib/algorithms'
+
+const bezierAlgorithms = BEZIER_DEGREES.map((degree) => `${degree} 阶 Bezier`)
 
 export const experiments = [
   {
@@ -94,11 +97,11 @@ export const experiments = [
     short: '用控制点塑造连续曲线',
     icon: Blend,
     accent: '#f472b6',
-    algorithms: ['2 阶 Bezier', '3 阶 Bezier', '4 阶 Bezier'],
+    algorithms: bezierAlgorithms,
     principle: 'De Casteljau 算法通过重复线性插值得到曲线上一点。控制多边形决定趋势，曲线经过首尾控制点，并在端点处与控制边相切。',
     bonus: ['跨平台实现与界面风格', '美观与人机交互', '控制点拖动并重画', '算法正确性验证', '帮助文档'],
     help: [
-      '先选择 2、3 或 4 阶曲线，再直接拖动红色控制点修改控制多边形。',
+      '先选择 2 至 10 阶曲线，再直接拖动红色控制点修改控制多边形。',
       '开启 De Casteljau 构造后，播放进度同时表示参数 t，可观察每层线性插值。',
       '复位按钮恢复默认控制点，曲线会在拖动和阶数切换时即时重算。',
     ],
@@ -137,9 +140,12 @@ export const algorithmNotes = {
     旋转: ['移动到旋转中心', '乘二维旋转矩阵', '平移回原坐标系'],
     复合变换: ['按顺序构造多个矩阵', '合成为一个总矩阵', '一次作用于全部顶点'],
   },
-  bezier: {
-    '2 阶 Bezier': ['使用 3 个控制点', '两层线性插值', '得到抛物型曲线'],
-    '3 阶 Bezier': ['使用 4 个控制点', '三层 De Casteljau 插值', '适合通用矢量路径'],
-    '4 阶 Bezier': ['使用 5 个控制点', '四层递推插值', '提供更复杂的局部趋势'],
-  },
+  bezier: Object.fromEntries(BEZIER_DEGREES.map((degree) => [
+    `${degree} 阶 Bezier`,
+    [
+      `使用 ${degree + 1} 个控制点`,
+      `${degree} 层 De Casteljau 线性插值`,
+      degree <= 3 ? '适合常用矢量路径' : '可表达更复杂的整体曲线趋势',
+    ],
+  ])),
 }
